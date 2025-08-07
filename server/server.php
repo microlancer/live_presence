@@ -5,39 +5,58 @@ use Ratchet\ConnectionInterface;
 require __DIR__ . '/vendor/autoload.php';
 
 class MyWebSocketServer implements MessageComponentInterface {
-        protected $clients;
+    protected $clients;
+    protected $latestMessages; // Store latest messages from each client
 
-public function __construct() {
+    public function __construct() {
         $this->clients = new SplObjectStorage;
+        $this->latestMessages = new SplObjectStorage;
     }
 
-
     public function onOpen(ConnectionInterface $conn) {
-        echo "New connection! ({$conn->resourceId})\n";
- // Store the new connection
+        echo "New connection! (#{$conn->resourceId})\n";
         $this->clients->attach($conn);
+
+        // Send the latest messages to the newly connected client
+        foreach ($this->latestMessages as $client) {
+            $message = $this->latestMessages[$client];
+            $conn->send($message);
+        }
     }
 
     public function onMessage(ConnectionInterface $from, $msg) {
-        echo "Received message: $msg\n";
-        // Broadcast the message to all clients
+        echo "Received message from #{$from->resourceId}: $msg\n";
+
+        // Save the most recent message from this client
+        $this->latestMessages[$from] = $msg;
+
+        // Broadcast the message to all other clients
         foreach ($this->clients as $client) {
             if ($from !== $client) {
-                echo $msg;
                 $client->send($msg);
             }
         }
     }
 
     public function onClose(ConnectionInterface $conn) {
-        echo "Connection {$conn->resourceId} has disconnected\n";
+        echo "Connection #{$conn->resourceId} has disconnected\n";
+
+        // Remove from both collections
+        $this->clients->detach($conn);
+
+        // Whether you want to clear the messages of disconnected clients is up to you
+        if (false) {
+            $this->latestMessages->detach($conn);
+    
+        }
     }
 
     public function onError(ConnectionInterface $conn, \Exception $e) {
-        echo "Error: {$e->getMessage()}\n";
+        echo "Error on connection #{$conn->resourceId}: {$e->getMessage()}\n";
         $conn->close();
     }
 }
+
 
 use Ratchet\Server\IoServer;
 use Ratchet\Http\HttpServer;
