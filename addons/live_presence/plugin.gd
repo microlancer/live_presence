@@ -207,7 +207,7 @@ func _try_to_connect() -> void:
 			return
 		else:
 			await get_tree().create_timer(2).timeout  # wait a bit for connection
-			_socket.send_text("Test packet")
+			_socket.send_text("[\"Ping\"]")
 			print("Connected to LivePresence server at: " + _server)
 			_connect_timer.stop()
 	else:
