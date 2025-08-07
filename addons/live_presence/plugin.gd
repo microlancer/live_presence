@@ -54,6 +54,7 @@ func _process(_delta):
 
 	if _socket.get_ready_state() == WebSocketPeer.STATE_CLOSED:
 		_print("Connection closed.")
+		_try_to_connect()
 		set_process(false)
 
 func _enter_tree():
@@ -175,10 +176,15 @@ func _check_diff_and_notify():
 	else:
 		_print("No changes")
 
+func _start_reconnect_attempts() -> void:
+	_connect_timer.wait_time = 5
+	_connect_timer.one_shot = false
+	_connect_timer.autostart = true
+	_connect_timer.timeout.connect(_try_to_connect)
+	add_child(_connect_timer)
+
 func _notify_server(files: Array) -> void:
 	_print("notify server")
-	var http := HTTPRequest.new()
-	add_child(http)
 
 	var data := {
 		"username": _username,
@@ -189,13 +195,12 @@ func _notify_server(files: Array) -> void:
 
 	if _socket.get_ready_state() != _socket.STATE_OPEN:
 		_print("Not connected to LivePresence server. Attempting to connect again.")
-		_connect_timer.wait_time = 5
-		_connect_timer.one_shot = false
-		_connect_timer.autostart = true
-		_connect_timer.timeout.connect(_try_to_connect)
-		add_child(_connect_timer)
+		_start_reconnect_attempts()
+
 	else:
-		_socket.send_text(json_string)
+		print("Socket looks good, sending.")
+		var err: Error = _socket.send_text(json_string)
+		print("Got: " + str(err))
 
 func _try_to_connect() -> void:
 	_print("Trying to connect")
@@ -206,7 +211,7 @@ func _try_to_connect() -> void:
 			set_process(false)
 			return
 		else:
-			await get_tree().create_timer(2).timeout  # wait a bit for connection
+			await get_tree().create_timer(5).timeout  # wait a bit for connection
 			_socket.send_text("[\"Ping\"]")
 			print("Connected to LivePresence server at: " + _server)
 			_connect_timer.stop()
@@ -225,6 +230,8 @@ func _add_editor_overlay(script: Script) -> void:
 	var script_editor := get_editor_interface().get_script_editor()
 	var parent = script_editor.get_current_editor().get_base_editor()
 
+	await get_tree().process_frame
+
 	# Clear any previous labels
 	for child in parent.get_children():
 		if child is Panel:
@@ -238,8 +245,6 @@ func _add_editor_overlay(script: Script) -> void:
 	else:
 		_print("Not being edited by anyone else: " + path)
 		return
-
-
 
 	var label := Label.new()
 	if _edited_files[path].size() == 1:
