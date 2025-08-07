@@ -63,6 +63,7 @@ func _enter_tree():
 
 	if _server == "":
 		print("No server defined in config.")
+		return
 
 	_socket = WebSocketPeer.new()
 	_try_to_connect()
@@ -96,7 +97,7 @@ func _received_text(text: String) -> void:
 
 	var text_object = JSON.parse_string(text)
 
-	if text_object == null or text_object.files is not Array:
+	if text_object == null or not "files" in text_object or text_object.files is not Array:
 		_print("Not an array, ignored")
 		return
 
