@@ -86,9 +86,10 @@ func _something_changed() -> void:
 	_check_diff_and_notify()
 
 func _changed_tabs(script: Script) -> void:
-	_print("Switched to: " + script.resource_path)
-	_print("tab")
-	_add_editor_overlay(script)
+	if script:
+		_print("Switched to: " + script.resource_path)
+		_print("tab")
+		_add_editor_overlay(script)
 
 func _received_text(text: String) -> void:
 	_print("Received text: " + text)
