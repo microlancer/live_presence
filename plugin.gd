@@ -225,8 +225,23 @@ func _try_to_connect() -> void:
 		_print("Already open")
 
 func _clear_editor_overlay() -> void:
+
+	await get_tree().process_frame
+
+	if not get_editor_interface():
+		return
+
 	var script_editor := get_editor_interface().get_script_editor()
+
+	if not script_editor.get_current_editor():
+		return
+
 	var parent = script_editor.get_current_editor().get_base_editor()
+
+	if not parent:
+		return
+
+
 	for child in parent.get_children():
 		if child is Panel:
 			child.queue_free()
