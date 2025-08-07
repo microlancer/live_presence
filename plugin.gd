@@ -209,7 +209,15 @@ func _notify_server(files: Array) -> void:
 		print("Got: " + str(err))
 
 func _try_to_connect() -> void:
-	_print("Trying to connect")
+	_print("Trying to connect: " + str(_socket.get_ready_state()))
+
+	if _socket.get_ready_state() == _socket.STATE_CONNECTING:
+		return
+
+	if _socket.get_ready_state() == _socket.STATE_CLOSING:
+		_print("Socket is closing, create a new one.")
+		_socket = WebSocketPeer.new()
+
 	if _socket.get_ready_state() != _socket.STATE_OPEN:
 		var err = _socket.connect_to_url(_server)
 		if err != OK:
@@ -275,7 +283,7 @@ func _add_editor_overlay(script: Script) -> void:
 	label.name = "LiveEditors"
 	label.self_modulate = Color.ORANGE_RED
 	label.add_theme_color_override("font_color", Color.BLACK)
-	label.self_modulate.a = 1.0#Color(255, 255, 255, 0.2)
+	label.self_modulate.a = 1.0
 
 	var panel := Panel.new()
 	var stylebox: StyleBox = StyleBoxFlat.new()
