@@ -14,7 +14,7 @@ var _socket: WebSocketPeer
 var _connect_timer := Timer.new()
 var _edited_files: Dictionary = {}
 var _res_root: String = ""
-var _debug: bool = true
+var _debug: bool = false
 
 func _print(v: Variant) -> void:
 	if _debug:
@@ -99,6 +99,10 @@ func _received_text(text: String) -> void:
 
 	if text_object == null or not "files" in text_object or text_object.files is not Array:
 		_print("Not an array, ignored")
+		return
+
+	if text_object.username == _username:
+		_print("Ignore update from self, can happen after reconnecting.")
 		return
 
 	# First, remove all files with the username associated that are not
