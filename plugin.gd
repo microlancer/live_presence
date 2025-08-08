@@ -14,7 +14,7 @@ var _socket: WebSocketPeer
 var _connect_timer := Timer.new()
 var _edited_files: Dictionary = {}
 var _res_root: String = ""
-var _debug: bool = false
+var _debug: bool = true
 
 func _print(v: Variant) -> void:
 	if _debug:
@@ -30,8 +30,11 @@ func _read_configs():
 	_diff_check_seconds = cfg.get_value("plugin", "diff_check_seconds")
 	_res_root = cfg.get_value("plugin", "res_root")
 
-var _message_sent: bool = false
+var _ping_sent: bool = false
+var _pong_received: bool = false
 var _script_editor: ScriptEditor
+var _heartbeat_timer: Timer = Timer.new()
+var _pong_check_timer: Timer = null
 
 func _process(_delta):
 
@@ -41,21 +44,44 @@ func _process(_delta):
 	_socket.poll()
 
 	if _socket.get_ready_state() == WebSocketPeer.STATE_OPEN:
-		if not _message_sent:
+		if not _ping_sent:
+			_print("Sending ping")
 			_socket.send_text("[\"Ping\"]")
-			_message_sent = true
+			_ping_sent = true
+			# wait 5 seconds for pong, otherwise assume disconnected
+			if not _pong_check_timer:
+				_pong_check_timer = Timer.new()
+				_pong_check_timer.wait_time = 5
+				_pong_check_timer.autostart = true
+				_pong_check_timer.one_shot = true
+				_pong_check_timer.timeout.connect(_check_pong)
+				add_child(_pong_check_timer)
 
 	while _socket.get_available_packet_count() > 0:
 		var pkt = _socket.get_packet()
 		var text = pkt.get_string_from_utf8()
 		_print("packet data Received:" + text)
+		if text == "[\"Pong\"]":
+			_pong_received = true
 		_clear_editor_overlay()
 		_received_text(text)
 
 	if _socket.get_ready_state() == WebSocketPeer.STATE_CLOSED:
-		_print("Connection closed.")
+		_print("Connection closed, attempting to reconnect.")
 		_try_to_connect()
 		set_process(false)
+
+func _check_pong() -> void:
+	if _pong_received:
+		_print("Got pong, connection still alive.")
+		# connection is still alive
+		_pong_received = false
+		_ping_sent = false # send another ping
+		_pong_check_timer.start()
+	else:
+		_print("No response from server after 5 seconds, assume disconnected.")
+		# no pong response, likely disconnected from server
+		_socket.close()
 
 func _enter_tree():
 	_print("Started LivePresence plugin")
@@ -147,7 +173,7 @@ func _on_diff_timer_timeout():
 func _get_git_diff_hash() -> int:
 	_print(_edited_files)
 	_print("Running git diff against: " + _branch)
-	var args = ["diff", _branch]
+	var args = ["diff", "--name-only", _branch]
 	var output = []
 	var exit_code = OS.execute("git", args, output, true)
 	if exit_code != 0:
@@ -229,6 +255,7 @@ func _try_to_connect() -> void:
 			_socket.send_text("[\"Ping\"]")
 			print("Connected to LivePresence server at: " + _server)
 			_connect_timer.stop()
+			set_process(true)
 	else:
 		_print("Already open")
 
