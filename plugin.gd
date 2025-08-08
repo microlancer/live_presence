@@ -68,8 +68,12 @@ func _process(_delta):
 
 	if _socket.get_ready_state() == WebSocketPeer.STATE_CLOSED:
 		_print("Connection closed, attempting to reconnect.")
-		_try_to_connect()
+		_start_reconnect_attempts()
 		set_process(false)
+
+	if _socket.get_ready_state() != _socket.STATE_OPEN and \
+		_socket.get_ready_state() != _socket.STATE_CLOSED:
+		print("Got state: " + str(_socket.get_ready_state()))
 
 func _check_pong() -> void:
 	if _pong_received:
@@ -107,6 +111,10 @@ func _enter_tree():
 	_diff_timer.autostart = true
 	add_child(_diff_timer)
 	_diff_timer.timeout.connect(_on_diff_timer_timeout)
+
+func _exit_tree() -> void:
+	if _socket and _socket.get_ready_state() == _socket.STATE_OPEN:
+		_socket.close()
 
 func _something_changed() -> void:
 	_print("script changed")
