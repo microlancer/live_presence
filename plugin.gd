@@ -14,7 +14,7 @@ var _socket: WebSocketPeer
 var _connect_timer := Timer.new()
 var _edited_files: Dictionary = {}
 var _res_root: String = ""
-var _debug: bool = true
+var _debug: bool = false
 
 func _print(v: Variant) -> void:
 	if _debug:
@@ -29,6 +29,7 @@ func _read_configs():
 	_server = cfg.get_value("plugin", "server")
 	_diff_check_seconds = cfg.get_value("plugin", "diff_check_seconds")
 	_res_root = cfg.get_value("plugin", "res_root")
+	_debug = cfg.get_value("plugin", "debug")
 
 var _ping_sent: bool = false
 var _pong_received: bool = false
