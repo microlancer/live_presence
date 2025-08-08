@@ -51,7 +51,7 @@ func _process(_delta):
 			# wait 5 seconds for pong, otherwise assume disconnected
 			if not _pong_check_timer:
 				_pong_check_timer = Timer.new()
-				_pong_check_timer.wait_time = 5
+				_pong_check_timer.wait_time = _diff_check_seconds
 				_pong_check_timer.autostart = true
 				_pong_check_timer.one_shot = true
 				_pong_check_timer.timeout.connect(_check_pong)
@@ -85,7 +85,8 @@ func _check_pong() -> void:
 	else:
 		_print("No response from server after 5 seconds, assume disconnected.")
 		# no pong response, likely disconnected from server
-		_socket.close()
+		# forcefully remove reference
+		_socket = null
 
 func _enter_tree():
 	_print("Started LivePresence plugin")
